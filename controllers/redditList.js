@@ -1,36 +1,47 @@
 const moment = require('moment')
-
-
+const fs = require('fs')
 let fetch = require('node-fetch')
+
+
 exports.getListings = async (req, res) => {
-  let response = await fetch('https://api.pushshift.io/reddit/search/submission/?q=lineup&subreddit=electricdaisycarnival&size=500').then(r => r.json());
-  let{data} = response;
-  // while(data.after){
-  //   console.log(data.after)
-  //   let{after} = data
-  //   response = await fetch(`https://www.reddit.com/r/electricdaisycarnival/.json?limit=100&t=all&after=${after}`).then(r => r.json());
-  //   let moreLineupPosts = data.children.filter(posts => {
-  //     let foundOne = false;
-  //     let { data: { title, selftext } } = posts;
-  //     terms.forEach(term => {
-  //       if (selftext.includes(term) || title.includes(term)) {
-  //         foundOne = true;
-  //       }
-  //     })
-  //     return foundOne
-  //   })
-  //   allPosts = allPosts.concat(moreLineupPosts)
-  //   // console.log(response.data)
-  //   data = response.data
-    
-  // }
-  let sendObj = {
-    totalPosts:data.length,
-    data
+  let terms = ["lineup","Lineup","setlist","Setlist",'"Line up']
+  let timestamps = ["1550689903", "1546257645", "1514721645", "1483185645", "1451563245","1420027245"]
+  let submissions = {}
+  for(let j = 0; j<timestamps.length -1 ; j++){
+  for(let i=0; i< terms.length; i++){
+    let fetchString = `https://api.pushshift.io/reddit/search/submission/?q=${terms[i]}&subreddit=electricdaisycarnival&size=500&before=${timestamps[j]}&after=${timestamps[j + 1]}`
+    let response = await fetch(fetchString).then(r => r.json());
+    let { data } = response;
+    data.forEach(post => {
+      if(!submissions[post.id]){
+        let {author, id, created_utc, full_link,num_comments, score, title,selftext} = post;
+        let postObj = {
+          author, 
+          id, 
+          created_utc, 
+          // full_link, 
+          num_comments, 
+          score, 
+          title, 
+          selftext
+        }
+
+        submissions[post.id] = postObj
+      }
+    })
   }
-  data.forEach(post => {
-    console.log(moment.unix(post.created_utc).format("MM/DD/YYYY"))
+}
+
+console.log(Object.keys(submissions).length)
+  fs.writeFileSync("lineup_submissions.json", JSON.stringify(submissions),"utf-8", () => {
+    console.log("done")
   })
-  res.send(sendObj)
+
+  res.send(submissions)
+
+  
+  
+
+
 }
 
